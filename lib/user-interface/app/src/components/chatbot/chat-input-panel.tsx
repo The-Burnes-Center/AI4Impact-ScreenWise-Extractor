@@ -7,7 +7,6 @@ import {
   SpaceBetween,
   Spinner,
   StatusIndicator,
-  Checkbox
 } from "@cloudscape-design/components";
 import {
   Dispatch,
@@ -81,8 +80,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     messageHistoryRef.current = props.messageHistory;    
   }, [props.messageHistory]);
   
-  /** checkboxes */
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
 
   /** Speech recognition */
@@ -146,8 +143,9 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     let username;
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
+    
 
-    const messageToSend = "Generate code for an eligibility screener for the following programs: " + selectedOptions;
+    const messageToSend = `what is the logic flow for an eligibility screener for ${selectedProgram}`;/*state.value.trim();*/
     if (messageToSend.length === 0) {
       addNotification("error","Please do not submit blank text!");
       return;          
@@ -215,23 +213,12 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           "data": {
             userMessage: messageToSend,
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
-<<<<<<< HEAD
-            systemPrompt: `You are an AI chatbot for the RIDE, an MBTA paratransit service. You will help customer service representatives respond to user complaints and queries.
-          Answer questions based on your Context and nothing more. If you are unable to decisively answer a question, direct them to customer service. Do not provide information outside of your given Context.
-          Customer service is needed if it is something you cannot answer. Requests for fare history require customer service, as do service complaints like a rude driver or late pickup.
-          Highly-specific situations will also require customer service to step in. Remember that RIDE Flex and RIDE are not the same service. 
-          Phone numbers:
-          TRAC (handles scheduling/booking, trip changes/cancellations, anything time-sensitive): 844-427-7433 (voice/relay) 857-206-6569 (TTY)
-          Mobility Center (handles eligibility questions, renewals, and changes to mobility status): 617-337-2727 (voice/relay)
-          MBTA Customer support (handles all other queries): 617-222-3200 (voice/relay)`,
-=======
             systemPrompt: `You are an AI chatbot for Link Health, a non profit organization to help connect patients to federal benefit programs. You are building
             a dynamic eligibility screener for patients to determine their eligibility for programs like Medicaid, SNAP, and more. The link health user will input what programs they want the eligibility screener
-            to screen for. You will be outputting the code to build this eligibility screener that link health will use on their website. the eligibility screener should be fully completed code that the user can copy and paste. 
+            to screen for. You will be outputting the code to build this eligibility screener that link health will use on thier website. the eligibility screener should be fully completed code that the user can copy and paste. 
             In practice the eligibility screener should be dynamiclly updating based on the patients resonse
             so that no repeated questions are asked, and the patient is comprehensively screened for all programs included in link health. After screening they will 
             be given a list of programs they are eligible for as well as links to the government websites to apply to that program`,
->>>>>>> 969dca663be5456c115c20ef6de6a72cefd1e4f3
             projectId: 'rsrs111111',
             user_id: username,
             session_id: props.session.id,
@@ -314,18 +301,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     }     
   };
 
-  const handleCheckboxChange = (option: string) => {
-    setSelectedOptions((prevSelectedOptions) =>
-      prevSelectedOptions.includes(option)
-        ? prevSelectedOptions.filter((item) => item !== option)
-        : [...prevSelectedOptions, option]
-    );
-  };
-
-  const options = ["SNAP", "Lifeline", "WIC"]; // Define your eligibility options
-
-
-
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
     [ReadyState.OPEN]: "Open",
@@ -353,18 +328,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             ) : (
               <Icon name="microphone-off" variant="disabled" />
             )}
-          </SpaceBetween>
-          <div>
-            {options.map((option) => (
-              <Checkbox
-                key={option}
-                checked={selectedOptions.includes(option)}
-                onChange={() => handleCheckboxChange(option)}
-              >
-                {option}
-              </Checkbox>
-            ))}
-          </div>
+          </SpaceBetween>          
           <TextareaAutosize
             className={styles.input_textarea}
             maxRows={6}
@@ -381,14 +345,43 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
               }
             }}
             value={state.value}
+            placeholder={"Send a message"}
           />
-          <Button onClick={handleSendMessage}>Send</Button>
+          <div style={{ marginLeft: "8px" }}>            
+            <Button
+              disabled={
+                readyState !== ReadyState.OPEN ||                
+                props.running ||
+                state.value.trim().length === 0 ||
+                props.session.loading
+              }
+              onClick={handleSendMessage}
+              iconAlign="right"
+              iconName={!props.running ? "angle-right-double" : undefined}
+              variant="primary"
+            >
+              {props.running ? (
+                <>
+                  Loading&nbsp;&nbsp;
+                  <Spinner />
+                </>
+              ) : (
+                "Send"
+              )}
+            </Button>
+          </div>
         </div>
       </Container>
+      <div className={styles.input_controls}>      
+        <div>
+        </div>  
+        <div className={styles.input_controls_right}>
+          <SpaceBetween direction="horizontal" size="xxs" alignItems="center">
+            <div style={{ paddingTop: "1px" }}>              
+            </div>            
+          </SpaceBetween>
+        </div>
+      </div>
     </SpaceBetween>
   );
-<<<<<<< HEAD
 }
-=======
-};
->>>>>>> 969dca663be5456c115c20ef6de6a72cefd1e4f3
