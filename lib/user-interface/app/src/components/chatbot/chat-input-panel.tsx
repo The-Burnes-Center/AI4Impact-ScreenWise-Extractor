@@ -7,6 +7,7 @@ import {
   SpaceBetween,
   Spinner,
   StatusIndicator,
+  Checkbox
 } from "@cloudscape-design/components";
 import {
   Dispatch,
@@ -80,6 +81,8 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     messageHistoryRef.current = props.messageHistory;    
   }, [props.messageHistory]);
   
+  /** checkboxes */
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
 
   /** Speech recognition */
@@ -143,9 +146,8 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     let username;
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
-    
 
-    const messageToSend = `what is the logic flow for an eligibility screener for ${selectedProgram}`;/*state.value.trim();*/
+    const messageToSend = "Generate code for an eligibility screener for the following programs: " + selectedOptions;
     if (messageToSend.length === 0) {
       addNotification("error","Please do not submit blank text!");
       return;          
@@ -215,7 +217,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
             systemPrompt: `You are an AI chatbot for Link Health, a non profit organization to help connect patients to federal benefit programs. You are building
             a dynamic eligibility screener for patients to determine their eligibility for programs like Medicaid, SNAP, and more. The link health user will input what programs they want the eligibility screener
-            to screen for. You will be outputting the code to build this eligibility screener that link health will use on thier website. the eligibility screener should be fully completed code that the user can copy and paste. 
+            to screen for. You will be outputting the code to build this eligibility screener that link health will use on their website. the eligibility screener should be fully completed code that the user can copy and paste. 
             In practice the eligibility screener should be dynamiclly updating based on the patients resonse
             so that no repeated questions are asked, and the patient is comprehensively screened for all programs included in link health. After screening they will 
             be given a list of programs they are eligible for as well as links to the government websites to apply to that program`,
@@ -301,6 +303,18 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     }     
   };
 
+  const handleCheckboxChange = (option: string) => {
+    setSelectedOptions((prevSelectedOptions) =>
+      prevSelectedOptions.includes(option)
+        ? prevSelectedOptions.filter((item) => item !== option)
+        : [...prevSelectedOptions, option]
+    );
+  };
+
+  const options = ["SNAP", "Lifeline", "WIC"]; // Define your eligibility options
+
+
+
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
     [ReadyState.OPEN]: "Open",
@@ -328,7 +342,18 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             ) : (
               <Icon name="microphone-off" variant="disabled" />
             )}
-          </SpaceBetween>          
+          </SpaceBetween>
+          <div>
+            {options.map((option) => (
+              <Checkbox
+                key={option}
+                checked={selectedOptions.includes(option)}
+                onChange={() => handleCheckboxChange(option)}
+              >
+                {option}
+              </Checkbox>
+            ))}
+          </div>
           <TextareaAutosize
             className={styles.input_textarea}
             maxRows={6}
@@ -345,43 +370,10 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
               }
             }}
             value={state.value}
-            placeholder={"Send a message"}
           />
-          <div style={{ marginLeft: "8px" }}>            
-            <Button
-              disabled={
-                readyState !== ReadyState.OPEN ||                
-                props.running ||
-                state.value.trim().length === 0 ||
-                props.session.loading
-              }
-              onClick={handleSendMessage}
-              iconAlign="right"
-              iconName={!props.running ? "angle-right-double" : undefined}
-              variant="primary"
-            >
-              {props.running ? (
-                <>
-                  Loading&nbsp;&nbsp;
-                  <Spinner />
-                </>
-              ) : (
-                "Send"
-              )}
-            </Button>
-          </div>
+          <Button onClick={handleSendMessage}>Send</Button>
         </div>
       </Container>
-      <div className={styles.input_controls}>      
-        <div>
-        </div>  
-        <div className={styles.input_controls_right}>
-          <SpaceBetween direction="horizontal" size="xxs" alignItems="center">
-            <div style={{ paddingTop: "1px" }}>              
-            </div>            
-          </SpaceBetween>
-        </div>
-      </div>
     </SpaceBetween>
   );
-}
+};
