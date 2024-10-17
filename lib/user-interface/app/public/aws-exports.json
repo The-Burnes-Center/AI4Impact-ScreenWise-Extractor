@@ -1,17 +1,1 @@
-{
-  "Auth": {
-    "region": "us-east-1",
-    "userPoolId": "us-east-1_uQaf470AD",
-    "userPoolWebClientId": "32tr4q11t9ni6oebmlnbblrtcf",
-    "oauth": {
-      "domain": "linkhealthaimvp.auth.us-east-1.amazoncognito.com",
-      "scope": ["aws.cognito.signin.user.admin", "email", "openid", "profile"],
-      "redirectSignIn": "http://localhost:3000/",
-      "redirectSignOut": "http://localhost:3000/",
-      "responseType": "code"
-    }
-  },
-  "httpEndpoint": "https://xudl8e0413.execute-api.us-east-1.amazonaws.com/",
-  "wsEndpoint": "wss://v20ebq58fc.execute-api.us-east-1.amazonaws.com/prod",
-  "federatedSignInProvider": ""
-}
+{"Auth":{"region":"us-east-1","userPoolId":"us-east-1_uQaf470AD","userPoolWebClientId":"32tr4q11t9ni6oebmlnbblrtcf","oauth":{"domain":"linkhealthaimvp.auth.us-east-1.amazoncognito.com","scope":["aws.cognito.signin.user.admin","email","openid","profile"],"redirectSignIn":"http://localhost:3000/","redirectSignOut":"http://localhost:3000/","responseType":"code"}},"httpEndpoint":"https://xudl8e0413.execute-api.us-east-1.amazonaws.com/","wsEndpoint":"wss://v20ebq58fc.execute-api.us-east-1.amazonaws.com/prod","federatedSignInProvider":""}
