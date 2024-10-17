@@ -10,4 +10,4 @@ node_modules
 cdk.out
 
 #aws-config
-aws-exports.json
+lib/user-interface/app/public/aws-exports.json
