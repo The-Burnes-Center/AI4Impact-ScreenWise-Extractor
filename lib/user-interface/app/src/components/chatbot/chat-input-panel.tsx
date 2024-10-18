@@ -147,13 +147,19 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
 
-    const messageToSend = "Generate code for an eligibility screener for the following programs: " + selectedOptions;
-    if (messageToSend.length === 0) {
+    let messageTemporary = "";
+    if (state.value.trim() === "") {
+      messageTemporary = "Generate a web app to test eligibility for the following programs : " + selectedOptions.join(", ");
+    }
+    else {
+      messageTemporary = "Generate a web app to test eligibility for the following programs : " + selectedOptions.join(", ") + ". Include these notes: " + state.value;
+    }
+    if (messageTemporary.length === 0) {
       addNotification("error","Please do not submit blank text!");
       return;          
     }
     setState({ value: "" });    
-    
+    const messageToSend = messageTemporary;
     try {
       props.setRunning(true);
       let receivedData = '';      
@@ -326,6 +332,17 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   return (
     <SpaceBetween direction="vertical" size="l">
       <Container>
+        <div className="checkbox-container">
+          {options.map((option) => (
+            <Checkbox
+              key={option}
+              checked={selectedOptions.includes(option)}
+              onChange={() => handleCheckboxChange(option)}
+            >
+              {option}
+            </Checkbox>
+          ))}
+        </div>
         <div className={styles.input_textarea_container}>
           <SpaceBetween size="xxs" direction="horizontal" alignItems="center">
             {browserSupportsSpeechRecognition ? (
@@ -343,17 +360,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
               <Icon name="microphone-off" variant="disabled" />
             )}
           </SpaceBetween>
-          <div>
-            {options.map((option) => (
-              <Checkbox
-                key={option}
-                checked={selectedOptions.includes(option)}
-                onChange={() => handleCheckboxChange(option)}
-              >
-                {option}
-              </Checkbox>
-            ))}
-          </div>
           <TextareaAutosize
             className={styles.input_textarea}
             maxRows={6}
