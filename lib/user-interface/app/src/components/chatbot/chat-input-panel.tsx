@@ -28,17 +28,14 @@ import { ReadyState } from "react-use-websocket";
 import { ApiClient } from "../../common/api-client/api-client";
 import { AppContext } from "../../common/app-context";
 import styles from "../../styles/chat.module.scss";
-
 import {  
   ChatBotHistoryItem,  
   ChatBotMessageType,
   ChatInputState,  
 } from "./types";
-
 import {  
   assembleHistory
 } from "./utils";
-
 import { Utils } from "../../common/utils";
 import {SessionRefreshContext} from "../../common/session-refresh-context"
 import { useNotifications } from "../notif-manager";
@@ -64,18 +61,18 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     useSpeechRecognition();
   const [state, setState] = useState<ChatInputState>({
     value: "",
-    
   });
   const { notifications, addNotification } = useNotifications();
   const [readyState, setReadyState] = useState<ReadyState>(
     ReadyState.OPEN
   );  
   const messageHistoryRef = useRef<ChatBotHistoryItem[]>([]);
-
   const [
     selectedDataSource,
     setSelectedDataSource
   ] = useState({ label: "Bedrock Knowledge Base", value: "kb" } as SelectProps.ChangeDetail["selectedOption"]);
+  const [interactionCount, setInteractionCount] = useState(0); // Track the number of interactions
+  const [previousDecisionTree, setPreviousDecisionTree] = useState<string | null>(null); // Track the previous decision tree
 
   useEffect(() => {
     messageHistoryRef.current = props.messageHistory;    
@@ -84,14 +81,12 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   /** checkboxes */
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-
   /** Speech recognition */
   useEffect(() => {
     if (transcript) {
       setState((state) => ({ ...state, value: transcript }));
     }
   }, [transcript]);
-
 
   /**Some amount of auto-scrolling for convenience */
   useEffect(() => {
@@ -100,34 +95,28 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         ChatScrollState.skipNextScrollEvent = false;
         return;
       }
-
       const isScrollToTheEnd =
         Math.abs(
           window.innerHeight +
           window.scrollY -
           document.documentElement.scrollHeight
         ) <= 10;
-
       if (!isScrollToTheEnd) {
         ChatScrollState.userHasScrolled = true;
       } else {
         ChatScrollState.userHasScrolled = false;
       }
     };
-
     window.addEventListener("scroll", onWindowScroll);
-
     return () => {
       window.removeEventListener("scroll", onWindowScroll);
     };
   }, []);
-
   useLayoutEffect(() => {
     if (ChatScrollState.skipNextHistoryUpdate) {
       ChatScrollState.skipNextHistoryUpdate = false;
       return;
     }
-
     if (!ChatScrollState.userHasScrolled && props.messageHistory.length > 0) {
       ChatScrollState.skipNextScrollEvent = true;
       window.scrollTo({
@@ -137,44 +126,68 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     }
   }, [props.messageHistory]);
 
-  /**Sends a message to the chat API */
-  const handleSendMessage = async () => {    
+  /** Sends a message to the chat API */
+  const handleSendMessage = async () => {
     if (props.running) return;
     if (readyState !== ReadyState.OPEN) return;
     ChatScrollState.userHasScrolled = false;
-
     let username;
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
 
     let messageTemporary = "";
-    if (state.value.trim() === "") {
-      messageTemporary = "Generate a web app to test eligibility for the following programs : " + selectedOptions.join(", ");
+
+    if (interactionCount === 0) {
+      // Second interaction
+      if (state.value.trim() === "") {
+        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+      } else {
+        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+      }
+    } else if (interactionCount === 1) {
+      // Second interaction
+      if (state.value.trim() === "") {
+        messageTemporary = "Combine the following eligibility question screening flow into one screening question flow" + previousDecisionTree + "Ensure that the guidelines are clearly defined and that the flow is logical with no reapeated questions. Each question should include the yes and no response flow and if their screening continues as they are showing to be eligible. The result of the decision tree should be the programs the user is eligible for.";
+      } else {
+        messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also Previous decision tree: " + previousDecisionTree;
+      }
+    } else {
+      // Other interactions
+      if (state.value.trim() === "") {
+        if (interactionCount === 2 && previousDecisionTree) {
+          messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also Previous decision tree: " + previousDecisionTree;
+        } else {
+          messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+        }
+      } else {
+        if (interactionCount === 2 && previousDecisionTree) {
+          messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility. Previous decision tree: " + previousDecisionTree;
+        } else {
+          messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+        }
+      }
+      setInteractionCount(interactionCount + 1);
     }
-    else {
-      messageTemporary = "Generate a web app to test eligibility for the following programs : " + selectedOptions.join(", ") + ". Include these notes: " + state.value;
-    }
+
     if (messageTemporary.length === 0) {
-      addNotification("error","Please do not submit blank text!");
+      addNotification("error", "Please do not submit blank text!");
       return;          
     }
+
     setState({ value: "" });    
     const messageToSend = messageTemporary;
+
     try {
       props.setRunning(true);
       let receivedData = '';      
-      
-      /**Add the user's query to the message history and a blank dummy message
-       * for the chatbot as the response loads
-       */
+
+      /** Add the user's query to the message history and a blank dummy message for the chatbot as the response loads */
       messageHistoryRef.current = [
         ...messageHistoryRef.current,
-
         {
           type: ChatBotMessageType.Human,
           content: messageToSend,
-          metadata: {            
-          },          
+          metadata: {},
         },
         {
           type: ChatBotMessageType.AI,          
@@ -182,36 +195,32 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           metadata: {},
         },
       ];
+      
       props.setMessageHistory(messageHistoryRef.current);
-
       let firstTime = false;
       if (messageHistoryRef.current.length < 3) {
         firstTime = true;
       }
-      // old non-auth url -> const wsUrl = 'wss://ngdpdxffy0.execute-api.us-east-1.amazonaws.com/test/'; 
-      // old shared url with auth -> wss://caoyb4x42c.execute-api.us-east-1.amazonaws.com/test/     
-      // first deployment URL 'wss://zrkw21d01g.execute-api.us-east-1.amazonaws.com/prod/';
-      const TEST_URL = appContext.wsEndpoint+"/"
 
-      // Get a JWT token for the API to authenticate on      
-      const TOKEN = await Utils.authenticate()
-                
-      const wsUrl = TEST_URL+'?Authorization='+TOKEN;
+      const TEST_URL = appContext.wsEndpoint + "/";
+      const TOKEN = await Utils.authenticate();
+      const wsUrl = TEST_URL + '?Authorization=' + TOKEN;
       const ws = new WebSocket(wsUrl);
-
-      let incomingMetadata: boolean = false;
+      let incomingMetadata = false;
       let sources = {};
 
-      /**If there is no response after a minute, time out the response to try again. */
-      setTimeout(() => {if (receivedData == '') {
-        ws.close()
-        messageHistoryRef.current.pop();
-        messageHistoryRef.current.push({
-          type: ChatBotMessageType.AI,          
-          content: 'Response timed out!',
-          metadata: {},
-        })
-      }},60000)
+      /** If there is no response after a minute, time out the response to try again. */
+      setTimeout(() => {
+        if (receivedData == '') {
+          ws.close();
+          messageHistoryRef.current.pop();
+          messageHistoryRef.current.push({
+            type: ChatBotMessageType.AI,          
+            content: 'Response timed out!',
+            metadata: {},
+          });
+        }
+      }, 120000);
 
       // Event listener for when the connection is open
       ws.addEventListener('open', function open() {
@@ -221,12 +230,24 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           "data": {
             userMessage: messageToSend,
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
-            systemPrompt: `You are an AI chatbot for Link Health, a non profit organization to help connect patients to federal benefit programs. You are building
-            a dynamic eligibility screener for patients to determine their eligibility for programs like Medicaid, SNAP, and more. The link health user will input what programs they want the eligibility screener
-            to screen for. You will be outputting the code to build this eligibility screener that link health will use on their website. the eligibility screener should be fully completed code that the user can copy and paste. 
-            In practice the eligibility screener should be dynamiclly updating based on the patients resonse
-            so that no repeated questions are asked, and the patient is comprehensively screened for all programs included in link health. After screening they will 
-            be given a list of programs they are eligible for as well as links to the government websites to apply to that program`,
+            systemPrompt: `You are an AI chatbot for Link Health, a non-profit organization to help connect patients to federal benefit programs. 
+            Create a decision tree that screens eligibility for the following programs: ${selectedOptions.join(", ")} with the following criteria:
+            - Start with initial screening questions about residency and key eligibility factors.
+            - Only ask specific questions about the selected programs eligibility after confirming key criteria.
+            - Ensure that only relevant questions are asked based on prior responses.
+            - Format the output to include user paths, clearly showing the flow based on responses, and the final eligibility determination.
+            
+            Example:
+            1. Do you have MassHealth (Medicaid)?
+              - If yes → Next question
+              - If no → Check if you meet income requirements
+            2. Do you have children under 5 or under 18 in your household?
+              - If yes → Next question
+              - If no → Check if you meet other eligibility criteria
+            3. Do you have a Social Security Number (SSN)?
+              - If yes → Proceed to screening questions
+              - If no → You may still be eligible if you are an eligible immigrant
+            4. [Continue this pattern for specific eligibility questions for the selected programs]`,
             projectId: 'rsrs111111',
             user_id: username,
             session_id: props.session.id,
@@ -235,49 +256,43 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         });
         
         ws.send(message);
-        
       });
+
       // Event listener for incoming messages
       ws.addEventListener('message', async function incoming(data) {
-        /**This is a custom tag from the API that denotes that an error occured
-         * and the next chunk will be an error message. */              
         if (data.data.includes("<!ERROR!>:")) {
-          addNotification("error",data.data);          
+          addNotification("error", data.data);          
           ws.close();
           return;
         }
-        /**This is a custom tag from the API that denotes when the model response
-         * ends and when the sources are coming in
-         */
+
         if (data.data == '!<|EOF_STREAM|>!') {          
           incomingMetadata = true;
           return;          
         }
+
         if (!incomingMetadata) {
           receivedData += data.data;
         } else {
           let sourceData = JSON.parse(data.data);
           sourceData = sourceData.map((item) => {
             if (item.title == "") {
-              return {title: item.uri.slice((item.uri as string).lastIndexOf("/") + 1), uri: item.uri}
+              return { title: item.uri.slice((item.uri as string).lastIndexOf("/") + 1), uri: item.uri };
             } else {
-              return item
+              return item;
             }
-          })
-          sources = { "Sources": sourceData}
+          });
+          sources = { "Sources": sourceData };
           console.log(sources);
         }
 
         // Update the chat history state with the new message        
         messageHistoryRef.current = [
           ...messageHistoryRef.current.slice(0, -2),
-
           {
             type: ChatBotMessageType.Human,
             content: messageToSend,
-            metadata: {
-              
-            },            
+            metadata: {},
           },
           {
             type: ChatBotMessageType.AI,            
@@ -285,41 +300,44 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
             metadata: sources,
           },
         ];        
-        props.setMessageHistory(messageHistoryRef.current);        
+        props.setMessageHistory(messageHistoryRef.current);
+
+        // Store the decision tree from the model's response
+        setPreviousDecisionTree(receivedData);
       });
+
       // Handle possible errors
       ws.addEventListener('error', function error(err) {
         console.error('WebSocket error:', err);
       });
+
       // Handle WebSocket closure
       ws.addEventListener('close', async function close() {
-        // if this is a new session, the backend will update the session list, so
-        // we need to refresh        
         if (firstTime) {             
           Utils.delay(1500).then(() => setNeedsRefresh(true));
         }
         props.setRunning(false);        
         console.log('Disconnected from the WebSocket server');
       });
-
     } catch (error) {      
       console.error('Error sending message:', error);
       alert('Sorry, something has gone horribly wrong! Please try again or refresh the page.');
       props.setRunning(false);
     }     
+
+    // Increment the interaction count
+    setInteractionCount(interactionCount + 1);
   };
 
   const handleCheckboxChange = (option: string) => {
     setSelectedOptions((prevSelectedOptions) =>
       prevSelectedOptions.includes(option)
-        ? prevSelectedOptions.filter((item) => item !== option)
+        ? prevSelectedOptions.filter((o) => o !== option)
         : [...prevSelectedOptions, option]
     );
   };
 
   const options = ["SNAP", "Lifeline", "WIC"]; // Define your eligibility options
-
-
 
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
@@ -332,33 +350,21 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   return (
     <SpaceBetween direction="vertical" size="l">
       <Container>
-        <div className="checkbox-container">
-          {options.map((option) => (
-            <Checkbox
-              key={option}
-              checked={selectedOptions.includes(option)}
-              onChange={() => handleCheckboxChange(option)}
-            >
-              {option}
-            </Checkbox>
-          ))}
-        </div>
+        {interactionCount === 0 && (
+          <div className="checkbox-container">
+            {options.map((option) => (
+              <Checkbox
+                key={option}
+                checked={selectedOptions.includes(option)}
+                onChange={() => handleCheckboxChange(option)}
+              >
+                {option}
+              </Checkbox>
+            ))}
+          </div>
+        )}
         <div className={styles.input_textarea_container}>
           <SpaceBetween size="xxs" direction="horizontal" alignItems="center">
-            {browserSupportsSpeechRecognition ? (
-              <Button
-                iconName={listening ? "microphone-off" : "microphone"}
-                variant="icon"
-                ariaLabel="microphone-access"
-                onClick={() =>
-                  listening
-                    ? SpeechRecognition.stopListening()
-                    : SpeechRecognition.startListening()
-                }
-              />
-            ) : (
-              <Icon name="microphone-off" variant="disabled" />
-            )}
           </SpaceBetween>
           <TextareaAutosize
             className={styles.input_textarea}
@@ -379,6 +385,16 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           />
           <Button onClick={handleSendMessage}>Send</Button>
         </div>
+        {interactionCount === 1 && (
+          <Button
+            onClick={() => {
+              setInteractionCount(2);
+              handleSendMessage();
+            }}
+          >
+            Combine Eligibility Screener
+          </Button>
+        )}
       </Container>
     </SpaceBetween>
   );
