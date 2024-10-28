@@ -54,9 +54,18 @@ export abstract class ChatScrollState {
   static skipNextHistoryUpdate = false;
 }
 
+//Make an enumerator class that helps track our stage in the application (1st: None, 2nd: Decision Tree made, 3rd: Eligbibilty Screener made)
+const Stages = Object.freeze({
+  START:   Symbol("start"),
+  TREE:  Symbol("tree"),
+  SCREENER: Symbol("screener")
+});
+
 export default function ChatInputPanel(props: ChatInputPanelProps) {
   const appContext = useContext(AppContext);
-  const {needsRefresh, setNeedsRefresh} = useContext(SessionRefreshContext);  
+  const {needsRefresh, setNeedsRefresh} = useContext(SessionRefreshContext);
+  //the stage of the chatbot that we are in (1st: Start, 2nd: Decision Tree made, 3rd: Eligbibilty Screener made)
+  const [stageChatbot, setStageChatbot] = useState(Stages.START);
   const { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
   const [state, setState] = useState<ChatInputState>({
@@ -137,41 +146,25 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
 
     let messageTemporary = "";
 
-    if (interactionCount === 0) {
-      // Second interaction
+    if (stageChatbot === Stages.START) {
       if (state.value.trim() === "") {
         messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
       } else {
-        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility. Then ask me for notes";
       }
-    } else if (interactionCount === 1) {
-      // Second interaction
-      if (state.value.trim() === "") {
-        messageTemporary = "Combine the following eligibility question screening flow into one screening question flow" + previousDecisionTree + "Ensure that the guidelines are clearly defined and that the flow is logical with no reapeated questions. Each question should include the yes and no response flow and if their screening continues as they are showing to be eligible. The result of the decision tree should be the programs the user is eligible for.";
-      } else {
-        messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also Previous decision tree: " + previousDecisionTree;
-      }
-    } else {
-      // Other interactions
-      if (state.value.trim() === "") {
-        if (interactionCount === 2 && previousDecisionTree) {
-          messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also Previous decision tree: " + previousDecisionTree;
-        } else {
-          messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
-        }
-      } else {
-        if (interactionCount === 2 && previousDecisionTree) {
-          messageTemporary = "Combine the following decision tree with new questions for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility. Previous decision tree: " + previousDecisionTree;
-        } else {
-          messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from a document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
-        }
-      }
-      setInteractionCount(interactionCount + 1);
-    }
-
-    if (messageTemporary.length === 0) {
-      addNotification("error", "Please do not submit blank text!");
-      return;          
+      setStageChatbot(Stages.TREE)
+    } else if (stageChatbot === Stages.TREE) {
+      messageTemporary =  "I would like to add these notes" + state.value.trim();
+      setStageChatbot(Stages.SCREENER)
+    } else if (stageChatbot === Stages.SCREENER) {
+      messageTemporary = "Write the HTML, CSS, and JavaScript code for a web application that allows users to check their eligibility for " +
+      "various government assistance programs. The application should have the following features: HTML: Follow this decision tree" + previousDecisionTree +
+      "Include a \"Check Eligibility\" button that the user can click to initiate the eligibility check. Display the result of the eligibility check in a designated area on the same page. " +
+      "CSS: Style the form, input fields, and result display area to create a visually appealing and user-friendly interface. Implement responsive design to ensure the application works" +
+      "well on different screen sizes. JavaScript (app.js): Capture the input values from the HTML form. Implement simple if-else logic to determine which program(s) (if any) the user is eligible for, " + 
+      "based on the input values. Display the result on the same page when the \"Check Eligibility\" button is clicked. Provide comments within the code explaining the logic and how the eligibility" + 
+      "is being checked. Additionally, provide instructions on how a user can run the web application locally on their machine, including any necessary setup steps. If there are any gaps or inefficiencies" + 
+      "in the design, code, or logic, suggest improvements to enhance the overall functionality and user experience of the application.";
     }
 
     setState({ value: "" });    
@@ -303,7 +296,9 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         props.setMessageHistory(messageHistoryRef.current);
 
         // Store the decision tree from the model's response
-        setPreviousDecisionTree(receivedData);
+        if (stageChatbot === Stages.TREE) {
+          setPreviousDecisionTree(receivedData);
+        }
       });
 
       // Handle possible errors
@@ -385,16 +380,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           />
           <Button onClick={handleSendMessage}>Send</Button>
         </div>
-        {interactionCount === 1 && (
-          <Button
-            onClick={() => {
-              setInteractionCount(2);
-              handleSendMessage();
-            }}
-          >
-            Combine Eligibility Screener
-          </Button>
-        )}
       </Container>
     </SpaceBetween>
   );
