@@ -39,6 +39,7 @@ import {
 import { Utils } from "../../common/utils";
 import {SessionRefreshContext} from "../../common/session-refresh-context"
 import { useNotifications } from "../notif-manager";
+//import AWS from '../../../../public/aws-exports.json'; - SARAH testing
 
 export interface ChatInputPanelProps {
   running: boolean;
@@ -56,9 +57,11 @@ export abstract class ChatScrollState {
 
 //Make an enumerator class that helps track our stage in the application (1st: None, 2nd: Decision Tree made, 3rd: Eligbibilty Screener made)
 const Stages = Object.freeze({
-  START:   Symbol("start"),
-  TREE:  Symbol("tree"),
-  SCREENER: Symbol("screener")
+  START: Symbol("start"),
+  TREE: Symbol("tree"),
+  HTML_SCREENER: Symbol("HTML screener"),
+  CSS_SCREENER: Symbol("CSS screener"),
+  JS_SCREENER: Symbol("JS screener"),
 });
 
 export default function ChatInputPanel(props: ChatInputPanelProps) {
@@ -82,6 +85,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   ] = useState({ label: "Bedrock Knowledge Base", value: "kb" } as SelectProps.ChangeDetail["selectedOption"]);
   const [interactionCount, setInteractionCount] = useState(0); // Track the number of interactions
   const [previousDecisionTree, setPreviousDecisionTree] = useState<string | null>(null); // Track the previous decision tree
+  const [generatedHTMLCode, setgeneratedHTMLCode] = useState<string | null>(null); // Track the previous html code
 
   useEffect(() => {
     messageHistoryRef.current = props.messageHistory;    
@@ -146,25 +150,43 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
 
     let messageTemporary = "";
 
+    const hardcodedQuestions = [
+      "Do you have MassHealth?",
+      "Do you have a SSN?",
+      "What is your household size?",
+      "Do you have children under 19?",
+      "Do you have children under 5?"
+    ];
+
     if (stageChatbot === Stages.START) {
       if (state.value.trim() === "") {
-        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility.";
+        messageTemporary = "Create a comprehensive and dynamic question flow designed for screening eligibility for only the federal benefit programs: " + selectedOptions.join(", ") +
+        ". The questionnaire should be adaptable, with questions changing based on previous answers to maintain relevance and streamline the user experience. Ensure the questions address" +
+        "key eligibility criteria such as income, family size, and having a social security number. For each program, design it to ask general questions first, followed by more specific ones only if needed." +
+        "Include logic that avoids redundant questions and guides users through clear pathways depending on their responses.";
       } else {
-        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility. Then ask me for notes";
-      }
-      setStageChatbot(Stages.TREE)
+        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility. Additionally, include the following questions: " + hardcodedQuestions.join(", ") + ". Then ask me for notes";
+      } 
+      setStageChatbot(Stages.TREE);
     } else if (stageChatbot === Stages.TREE) {
-      messageTemporary =  "I would like to add these notes" + state.value.trim();
-      setStageChatbot(Stages.SCREENER)
-    } else if (stageChatbot === Stages.SCREENER) {
-      messageTemporary = "Write the HTML, CSS, and JavaScript code for a web application that allows users to check their eligibility for " +
-      "various government assistance programs. The application should have the following features: HTML: Follow this decision tree" + previousDecisionTree +
-      "Include a \"Check Eligibility\" button that the user can click to initiate the eligibility check. Display the result of the eligibility check in a designated area on the same page. " +
-      "CSS: Style the form, input fields, and result display area to create a visually appealing and user-friendly interface. Implement responsive design to ensure the application works" +
-      "well on different screen sizes. JavaScript (app.js): Capture the input values from the HTML form. Implement simple if-else logic to determine which program(s) (if any) the user is eligible for, " + 
-      "based on the input values. Display the result on the same page when the \"Check Eligibility\" button is clicked. Provide comments within the code explaining the logic and how the eligibility" + 
-      "is being checked. Additionally, provide instructions on how a user can run the web application locally on their machine, including any necessary setup steps. If there are any gaps or inefficiencies" + 
-      "in the design, code, or logic, suggest improvements to enhance the overall functionality and user experience of the application.";
+        messageTemporary =  "Using the existing decision tree for " + selectedOptions.join(", ") + ", generate a single, combined decision tree that evaluates eligibility for both programs together." + 
+        "Ensure that the tree is optimized to avoid redundant questions. Incorporate all questions from both trees, to ensure compressive accurate screening, and design the flow so" + 
+        "that common questions are asked only once, with unique questions asked only as necessary. Include specifics of each question. For income level clairfy the dollar amount. For household size, clarify the exact sizes. The output should clarify all questions using specifics related to the question, detailing the logic at each decision point to allow verification of accuracy by a human reviewer." + state.value.trim();
+        setStageChatbot(Stages.HTML_SCREENER)
+    } else if (stageChatbot === Stages.HTML_SCREENER) {
+        messageTemporary = "Generate the HTML code for a responsive web application that presents eligibility questions for federal benefit programs: " + selectedOptions.join(", ") +
+        ". Follow this decision tree structure: " + previousDecisionTree + ". Display each question based on prior responses and include a 'Check Eligibility' button to initiate the eligibility check." +
+        "Use HTML structure that will be easy to style and add JavaScript interactions in later steps.";
+        setStageChatbot(Stages.CSS_SCREENER)
+    } else if (stageChatbot === Stages.CSS_SCREENER) {
+        messageTemporary = "Generate the CSS for the following HTML code to create a responsive and user-friendly interface: " + generatedHTMLCode +
+        ". Style the form, input fields, and results area for a clean look. Ensure responsive design for compatibility with different screen sizes (mobile, tablet, desktop)." +
+        "Use class selectors from the HTML to apply styling rules that enhance visual appeal and user experience.";
+        setStageChatbot(Stages.JS_SCREENER)
+    } else if (stageChatbot === Stages.JS_SCREENER) {
+        messageTemporary = "Generate JavaScript code (app.js) for the following HTML structure to implement dynamic eligibility logic: " + generatedHTMLCode +
+        ". Capture form inputs, use decision tree logic to determine program eligibility, and display the results on the same page." +
+        "Include logic for the 'Check Eligibility' button and provide inline comments to clarify the code structure. Add setup instructions for running locally.";
     }
 
     setState({ value: "" });    
@@ -172,7 +194,8 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
 
     try {
       props.setRunning(true);
-      let receivedData = '';      
+      let receivedData = '';    
+    
 
       /** Add the user's query to the message history and a blank dummy message for the chatbot as the response loads */
       messageHistoryRef.current = [
@@ -298,6 +321,11 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         // Store the decision tree from the model's response
         if (stageChatbot === Stages.TREE) {
           setPreviousDecisionTree(receivedData);
+        }
+
+        // Store the html code from the model's response
+        if (stageChatbot === Stages.HTML_SCREENER) {
+          setgeneratedHTMLCode(receivedData);
         }
       });
 
