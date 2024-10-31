@@ -21,6 +21,7 @@ import { useNotifications } from "../components/notif-manager";
 import { Utils } from "../common/utils.js";
 
 
+
 export default function NavigationPanel() {
   const appContext = useContext(AppContext);
   const apiClient = new ApiClient(appContext);
@@ -81,11 +82,12 @@ export default function NavigationPanel() {
 
 
   const updateItems = async (sessions) => {
+    console.log("Sessions:", sessions); // Log sessions to debug
     let newItems: SideNavigationProps.Item[] = [
       {
         type: "section",
         text: "Session History",
-        items: sessions.map(session => ({
+        items: sessions.slice(0,5).map(session => ({
           type: "link",
           text: `${session.title}`,
           href: `/chatbot/playground/${session.session_id}`,
@@ -100,6 +102,9 @@ export default function NavigationPanel() {
         }]),
       },
     ];
+
+    console.log("New Items:", newItems); // Log new items to debug
+
     try {
       const result = await Auth.currentAuthenticatedUser();
       const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
