@@ -149,6 +149,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     if (!username) return;    
 
     let messageTemporary = "";
+    let userMessage = "";
 
     const hardcodedQuestions = [
       "Do you have MassHealth?",
@@ -167,27 +168,33 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
       } else {
         messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility. Additionally, include the following questions: " + hardcodedQuestions.join(", ") + ". Then ask me for notes";
       } 
+      userMessage = "Creating a comprehensive question flow for " + selectedOptions.join(", ") + ". Please wait...";
       setStageChatbot(Stages.TREE);
     } else if (stageChatbot === Stages.TREE) {
         messageTemporary =  "Using the existing decision tree for " + selectedOptions.join(", ") + ", generate a single, combined decision tree that evaluates eligibility for both programs together." + 
         "Ensure that the tree is optimized to avoid redundant questions. Incorporate all questions from both trees, to ensure compressive accurate screening, and design the flow so" + 
         "that common questions are asked only once, with unique questions asked only as necessary. Include specifics of each question. For income level clairfy the dollar amount. For household size, clarify the exact sizes. The output should clarify all questions using specifics related to the question, detailing the logic at each decision point to allow verification of accuracy by a human reviewer." + state.value.trim();
+        userMessage = "Generating a combined decision tree. Please wait...";
         setStageChatbot(Stages.HTML_SCREENER)
     } else if (stageChatbot === Stages.HTML_SCREENER) {
         messageTemporary = "Generate the HTML code for a responsive web application that presents eligibility questions for federal benefit programs: " + selectedOptions.join(", ") +
         ". Follow this decision tree structure: " + previousDecisionTree + ". Display each question based on prior responses and include a 'Check Eligibility' button to initiate the eligibility check." +
         "Use HTML structure that will be easy to style and add JavaScript interactions in later steps.";
+        userMessage = "Generating HTML code for the eligibility screener. Please wait...";
         setStageChatbot(Stages.CSS_SCREENER)
     } else if (stageChatbot === Stages.CSS_SCREENER) {
         messageTemporary = "Generate the CSS for the following HTML code to create a responsive and user-friendly interface: " + generatedHTMLCode +
         ". Style the form, input fields, and results area for a clean look. Ensure responsive design for compatibility with different screen sizes (mobile, tablet, desktop)." +
         "Use class selectors from the HTML to apply styling rules that enhance visual appeal and user experience.";
+        userMessage = "Generating CSS for the eligibility screener. Please wait...";
         setStageChatbot(Stages.JS_SCREENER)
     } else if (stageChatbot === Stages.JS_SCREENER) {
         messageTemporary = "Generate JavaScript code (app.js) for the following HTML structure to implement dynamic eligibility logic: " + generatedHTMLCode +
         ". Capture form inputs, use decision tree logic to determine program eligibility, and display the results on the same page." +
         "Include logic for the 'Check Eligibility' button and provide inline comments to clarify the code structure. Add setup instructions for running locally.";
+        userMessage = "Generating JavaScript for the eligibility screener. Please wait...";
     }
+  
 
     setState({ value: "" });    
     const messageToSend = messageTemporary;
@@ -202,7 +209,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         ...messageHistoryRef.current,
         {
           type: ChatBotMessageType.Human,
-          content: messageToSend,
+          content: userMessage, // displaying hard coded message
           metadata: {},
         },
         {
@@ -307,7 +314,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           ...messageHistoryRef.current.slice(0, -2),
           {
             type: ChatBotMessageType.Human,
-            content: messageToSend,
+            content: userMessage,
             metadata: {},
           },
           {
