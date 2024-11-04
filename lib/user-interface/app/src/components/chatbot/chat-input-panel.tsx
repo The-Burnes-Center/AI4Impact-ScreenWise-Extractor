@@ -171,7 +171,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
       userMessage = "Creating a comprehensive question flow for " + selectedOptions.join(", ") + ". Please wait...";
       setStageChatbot(Stages.TREE);
     } else if (stageChatbot === Stages.TREE) {
-        messageTemporary =  "Using the existing decision tree for " + selectedOptions.join(", ") + ", generate a single, combined decision tree that evaluates eligibility for both programs together." + 
+        messageTemporary =  "Using the existing decision tree for " + selectedOptions.join(", ") + ", generate a single, combined decision tree based on" + previousDecisionTree + " that evaluates eligibility for both programs in one question flow, max of 10 questions." + 
         "Ensure that the tree is optimized to avoid redundant questions. Incorporate all questions from both trees, to ensure compressive accurate screening, and design the flow so" + 
         "that common questions are asked only once, with unique questions asked only as necessary. Include specifics of each question. For income level clairfy the dollar amount. For household size, clarify the exact sizes. The output should clarify all questions using specifics related to the question, detailing the logic at each decision point to allow verification of accuracy by a human reviewer." + state.value.trim();
         userMessage = "Generating a combined decision tree. Please wait...";
