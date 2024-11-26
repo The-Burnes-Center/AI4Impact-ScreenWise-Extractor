@@ -156,13 +156,12 @@ export default function NavigationPanel() {
           className="new-chat-button"
           style={{ textAlign: "right" }}
         >
-          New session
+          New Screener
         </RouterButton>
       </Box>
       {loaded ?
         <SideNavigation
           activeHref={activeHref}
-          // onFollow={onFollow}
           onFollow={event => {
             if (!event.detail.external) {
               event.preventDefault();

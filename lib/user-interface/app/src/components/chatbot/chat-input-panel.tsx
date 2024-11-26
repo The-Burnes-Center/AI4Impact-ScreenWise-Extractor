@@ -55,20 +55,10 @@ export abstract class ChatScrollState {
   static skipNextHistoryUpdate = false;
 }
 
-//Make an enumerator class that helps track our stage in the application (1st: None, 2nd: Decision Tree made, 3rd: Eligbibilty Screener made)
-const Stages = Object.freeze({
-  START: Symbol("start"),
-  TREE: Symbol("tree"),
-  HTML_SCREENER: Symbol("HTML screener"),
-  CSS_SCREENER: Symbol("CSS screener"),
-  JS_SCREENER: Symbol("JS screener"),
-});
-
 export default function ChatInputPanel(props: ChatInputPanelProps) {
   const appContext = useContext(AppContext);
   const {needsRefresh, setNeedsRefresh} = useContext(SessionRefreshContext);
   //the stage of the chatbot that we are in (1st: Start, 2nd: Decision Tree made, 3rd: Eligbibilty Screener made)
-  const [stageChatbot, setStageChatbot] = useState(Stages.START);
   const { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
   const [state, setState] = useState<ChatInputState>({
@@ -83,10 +73,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     selectedDataSource,
     setSelectedDataSource
   ] = useState({ label: "Bedrock Knowledge Base", value: "kb" } as SelectProps.ChangeDetail["selectedOption"]);
-  const [interactionCount, setInteractionCount] = useState(0); // Track the number of interactions
-  const [previousDecisionTree, setPreviousDecisionTree] = useState<string | null>(null); // Track the previous decision tree
-  const [generatedHTMLCode, setgeneratedHTMLCode] = useState<string | null>(null); // Track the previous html code
-
   useEffect(() => {
     messageHistoryRef.current = props.messageHistory;    
   }, [props.messageHistory]);
@@ -148,54 +134,34 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     await Auth.currentAuthenticatedUser().then((value) => username = value.username);
     if (!username) return;    
 
-    let messageTemporary = "";
-    let userMessage = "";
+    let userMessage = "Extracting JSON from the knowledge documents provided...";
+    let messageTemporary = `You are tasked with generating a structured JSON for program eligibility that includes programs, criteria, and questions. Follow these updated guidelines:
+JSON Structure
+Programs Section:
+Include: id, name, estimated_savings (string with detailed description), application_link, and criteria_ids.
+Criteria Section:
+Include: id, type (number, boolean, option), category, description, and relevant fields like threshold_by_household_size (for income) or options (for categorical criteria).
+Questions Section:
+Include: question, type, input_type, criteria_impact (mapping to programs and criteria), and options (only for dropdown questions).
+Key Refinements
+Use strings for estimated_savings with descriptions (e.g., "Up to $150/month").
+Ensure clear, program-specific descriptions for all criteria.
+Exclude options for boolean questions unless clarifying labels are necessary.
+Verify threshold_by_household_size values align with legal guidelines.
+Ensure all criteria links in criteria_ids are logically complete for each program.
+Use consistent terminology and formatting across all sections.
+{
+  "programs": [...],
+  "criteria": [...],
+  "questions": [...]
+}
+Use the following guidelines when generating the JSON:
 
-    const hardcodedQuestions = [
-      "Do you have MassHealth?",
-      "Do you have a SSN?",
-      "What is your household size?",
-      "Do you have children under 19?",
-      "Do you have children under 5?"
-    ];
-
-    if (stageChatbot === Stages.START) {
-      if (state.value.trim() === "") {
-        messageTemporary = "Create a comprehensive and dynamic question flow designed for screening eligibility for only the federal benefit programs: " + selectedOptions.join(", ") +
-        ". The questionnaire should be adaptable, with questions changing based on previous answers to maintain relevance and streamline the user experience. Ensure the questions address" +
-        "key eligibility criteria such as income, family size, and having a social security number. For each program, design it to ask general questions first, followed by more specific ones only if needed." +
-        "Include logic that avoids redundant questions and guides users through clear pathways depending on their responses.";
-      } else {
-        messageTemporary = "Generate a decision tree for an eligibility screener for the following programs: " + selectedOptions.join(", ") + ". Include these notes: " + state.value + ". Ensure to include questions from the document in my Bedrock S3 bucket and also consider other related documents for eligibility. Additionally, include the following questions: " + hardcodedQuestions.join(", ") + ". Then ask me for notes";
-      } 
-      userMessage = "Creating a comprehensive question flow for " + selectedOptions.join(", ") + ". Please wait...";
-      setStageChatbot(Stages.TREE);
-    } else if (stageChatbot === Stages.TREE) {
-        messageTemporary =  "Using the existing decision tree for " + selectedOptions.join(", ") + ", generate a single, combined decision tree based on" + previousDecisionTree + " that evaluates eligibility for both programs in one question flow, max of 10 questions." + 
-        "Ensure that the tree is optimized to avoid redundant questions. Incorporate all questions from both trees, to ensure compressive accurate screening, and design the flow so" + 
-        "that common questions are asked only once, with unique questions asked only as necessary. Include specifics of each question. For income level clairfy the dollar amount. For household size, clarify the exact sizes. The output should clarify all questions using specifics related to the question, detailing the logic at each decision point to allow verification of accuracy by a human reviewer." + state.value.trim();
-        userMessage = "Generating a combined decision tree. Please wait...";
-        setStageChatbot(Stages.HTML_SCREENER)
-    } else if (stageChatbot === Stages.HTML_SCREENER) {
-        messageTemporary = "Generate the HTML code for a responsive web application that presents eligibility questions for federal benefit programs: " + selectedOptions.join(", ") +
-        ". Follow this decision tree structure: " + previousDecisionTree + ". Display each question based on prior responses and include a 'Check Eligibility' button to initiate the eligibility check." +
-        "Use HTML structure that will be easy to style and add JavaScript interactions in later steps.";
-        userMessage = "Generating HTML code for the eligibility screener. Please wait...";
-        setStageChatbot(Stages.CSS_SCREENER)
-    } else if (stageChatbot === Stages.CSS_SCREENER) {
-        messageTemporary = "Generate the CSS for the following HTML code to create a responsive and user-friendly interface: " + generatedHTMLCode +
-        ". Style the form, input fields, and results area for a clean look. Ensure responsive design for compatibility with different screen sizes (mobile, tablet, desktop)." +
-        "Use class selectors from the HTML to apply styling rules that enhance visual appeal and user experience.";
-        userMessage = "Generating CSS for the eligibility screener. Please wait...";
-        setStageChatbot(Stages.JS_SCREENER)
-    } else if (stageChatbot === Stages.JS_SCREENER) {
-        messageTemporary = "Generate JavaScript code (app.js) for the following HTML structure to implement dynamic eligibility logic: " + generatedHTMLCode +
-        ". Capture form inputs, use decision tree logic to determine program eligibility, and display the results on the same page." +
-        "Include logic for the 'Check Eligibility' button and provide inline comments to clarify the code structure. Add setup instructions for running locally.";
-        userMessage = "Generating JavaScript for the eligibility screener. Please wait...";
-    }
+Use the exact key names, nesting, and types as shown.
+Ensure logical linking between questions and the programs/criteria they impact.
+Include realistic examples for threshold_by_household_size, options, and descriptions for each criterion.
+Refer to the following document details and convert them into a JSON structure that adheres strictly to the format and specifications above. Generate the JSON accurately and comprehensively, using placeholder text only when explicitly specified.`;
   
-
     setState({ value: "" });    
     const messageToSend = messageTemporary;
 
@@ -209,7 +175,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
         ...messageHistoryRef.current,
         {
           type: ChatBotMessageType.Human,
-          content: userMessage, // displaying hard coded message
+          content: userMessage, 
           metadata: {},
         },
         {
@@ -253,31 +219,13 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           "data": {
             userMessage: messageToSend,
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
-            systemPrompt: `You are an AI chatbot for Link Health, a non-profit organization to help connect patients to federal benefit programs. 
-            Create a decision tree that screens eligibility for the following programs: ${selectedOptions.join(", ")} with the following criteria:
-            - Start with initial screening questions about residency and key eligibility factors.
-            - Only ask specific questions about the selected programs eligibility after confirming key criteria.
-            - Ensure that only relevant questions are asked based on prior responses.
-            - Format the output to include user paths, clearly showing the flow based on responses, and the final eligibility determination.
-            
-            Example:
-            1. Do you have MassHealth (Medicaid)?
-              - If yes → Next question
-              - If no → Check if you meet income requirements
-            2. Do you have children under 5 or under 18 in your household?
-              - If yes → Next question
-              - If no → Check if you meet other eligibility criteria
-            3. Do you have a Social Security Number (SSN)?
-              - If yes → Proceed to screening questions
-              - If no → You may still be eligible if you are an eligible immigrant
-            4. [Continue this pattern for specific eligibility questions for the selected programs]`,
+            systemPrompt: `You are a skilled assistant tasked with creating a JSON structure to represent program eligibility criteria, associated questions, and program details based on provided information.`,
             projectId: 'rsrs111111',
             user_id: username,
             session_id: props.session.id,
             retrievalSource: selectedDataSource.value
           }
         });
-        
         ws.send(message);
       });
 
@@ -324,16 +272,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
           },
         ];        
         props.setMessageHistory(messageHistoryRef.current);
-
-        // Store the decision tree from the model's response
-        if (stageChatbot === Stages.TREE) {
-          setPreviousDecisionTree(receivedData);
-        }
-
-        // Store the html code from the model's response
-        if (stageChatbot === Stages.HTML_SCREENER) {
-          setgeneratedHTMLCode(receivedData);
-        }
       });
 
       // Handle possible errors
@@ -353,10 +291,7 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
       console.error('Error sending message:', error);
       alert('Sorry, something has gone horribly wrong! Please try again or refresh the page.');
       props.setRunning(false);
-    }     
-
-    // Increment the interaction count
-    setInteractionCount(interactionCount + 1);
+    } 
   };
 
   const handleCheckboxChange = (option: string) => {
@@ -367,8 +302,6 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     );
   };
 
-  const options = ["SNAP", "Lifeline", "WIC"]; // Define your eligibility options
-
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
     [ReadyState.OPEN]: "Open",
@@ -378,42 +311,13 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
   }[readyState];
 
   return (
-    <SpaceBetween direction="vertical" size="l">
+    <SpaceBetween direction="horizontal" size="l">
       <Container>
-        {interactionCount === 0 && (
-          <div className="checkbox-container">
-            {options.map((option) => (
-              <Checkbox
-                key={option}
-                checked={selectedOptions.includes(option)}
-                onChange={() => handleCheckboxChange(option)}
-              >
-                {option}
-              </Checkbox>
-            ))}
-          </div>
-        )}
         <div className={styles.input_textarea_container}>
-          <SpaceBetween size="xxs" direction="horizontal" alignItems="center">
-          </SpaceBetween>
-          <TextareaAutosize
-            className={styles.input_textarea}
-            maxRows={6}
-            minRows={1}
-            spellCheck={true}
-            autoFocus
-            onChange={(e) =>
-              setState((state) => ({ ...state, value: e.target.value }))
-            }
-            onKeyDown={(e) => {
-              if (e.key == "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            value={state.value}
-          />
-          <Button onClick={handleSendMessage}>Send</Button>
+          <Button onClick={handleSendMessage}>Extract</Button>
+        </div>
+        <div className={styles.input_textarea_container}>
+          <Button onClick={handleSendMessage}>Download File</Button>
         </div>
       </Container>
     </SpaceBetween>

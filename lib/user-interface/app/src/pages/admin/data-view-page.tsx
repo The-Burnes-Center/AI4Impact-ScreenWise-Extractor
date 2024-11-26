@@ -16,6 +16,7 @@ import { Auth } from "aws-amplify";
 import DataFileUpload from "./file-upload-tab";
 import { ApiClient } from "../../common/api-client/api-client";
 import { AppContext } from "../../common/app-context";
+import RouterButton from "../../components/wrappers/router-button";
 
 export default function DataPage() {
   const onFollow = useOnFollow();
@@ -36,51 +37,51 @@ export default function DataPage() {
     }
   }
 
-  /** Checks for admin status */
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await Auth.currentAuthenticatedUser();
-        if (!result || Object.keys(result).length === 0) {
-          console.log("Signed out!")
-          Auth.signOut();
-          return;
-        }
-        const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
-        if (admin) {
-          const data = JSON.parse(admin);
-          if (data.includes("Admin")) {
-            setAdmin(true);
-          }
-        }
-      }
-      /** If there is some issue checking for admin status, just do nothing and the
-       * error page will show up
-        */
-      catch (e) {
-        console.log(e);
-      }
-    })();
-  }, []);
+  // /** Checks for admin status */
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       const result = await Auth.currentAuthenticatedUser();
+  //       if (!result || Object.keys(result).length === 0) {
+  //         console.log("Signed out!")
+  //         Auth.signOut();
+  //         return;
+  //       }
+  //       const admin = result?.signInUserSession?.idToken?.payload["custom:role"]
+  //       if (admin) {
+  //         const data = JSON.parse(admin);
+  //         if (data.includes("Admin")) {
+  //           setAdmin(true);
+  //         }
+  //       }
+  //     }
+  //     /** If there is some issue checking for admin status, just do nothing and the
+  //      * error page will show up
+  //       */
+  //     catch (e) {
+  //       console.log(e);
+  //     }
+  //   })();
+  // }, []);
 
   /** If the admin status check fails, just show an access denied page*/
-  if (!admin) {
-    return (
-      <div
-        style={{
-          height: "90vh",
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Alert header="Configuration error" type="error">
-          You are not authorized to view this page!
-        </Alert>
-      </div>
-    );
-  }
+  // if (!admin) {
+  //   return (
+  //     <div
+  //       style={{
+  //         height: "90vh",
+  //         width: "100%",
+  //         display: "flex",
+  //         justifyContent: "center",
+  //         alignItems: "center",
+  //       }}
+  //     >
+  //       <Alert header="Configuration error" type="error">
+  //         You are not authorized to view this page!
+  //       </Alert>
+  //     </div>
+  //   );
+  // }
 
   return (
     <BaseAppLayout
@@ -94,7 +95,7 @@ export default function DataPage() {
               href: "/",
             },
             {
-              text: "View Data",
+              text: "View Eligibility Data Sources",
               href: "/admin/data",
             },
           ]}
@@ -105,8 +106,19 @@ export default function DataPage() {
           header={
             <Header
               variant="h1"
+              description="An open-source, free-to-use screener builder."
+              actions={
+                <RouterButton
+                  iconAlign="right" 
+                  iconName="contact"
+                  variant="primary"
+                  href="`/chatbot/playground/${uuidv4()}`"
+                >
+                  Extract
+                </RouterButton>
+              }
             >
-              Data Dashboard
+              Upload
             </Header>
           }
         >
@@ -115,16 +127,15 @@ export default function DataPage() {
               header={
                 <Header
                   variant="h3"
-                  // description="Container description"
                 >
-                  Last successful sync: {lastSyncTime}
+                  Upload your data sources
                 </Header>                
               }
             >
               <SpaceBetween size="xxs">
-              Manage the chatbot's data here. You can view, add, or remove data for the chatbot to reference.
+              Manage the extractor's data here. You can view, add, or remove data for the extractor to reference.
 
-              Please make sure to sync data with the chatbot when you are done adding or removing new files.
+              Please make sure to sync data with the tool when you are done adding or removing new files.
               <br></br>
               {showUnsyncedAlert && (
                 <Alert

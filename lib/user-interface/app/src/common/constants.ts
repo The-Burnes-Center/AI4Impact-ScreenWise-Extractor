@@ -41,4 +41,4 @@ export const feedbackTypes = [
   {label: "Other", value:"other", disabled: false}
 ]
 
-export const CHATBOT_NAME = "Link Health Eligibility Generator";
+export const CHATBOT_NAME = "Eligibility Extractor";

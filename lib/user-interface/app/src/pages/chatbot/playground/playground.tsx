@@ -7,6 +7,7 @@ import { Header, HelpPanel } from "@cloudscape-design/components";
 export default function Playground() {
   const { sessionId } = useParams();
 
+
   return (    
     <BaseAppLayout
       info={

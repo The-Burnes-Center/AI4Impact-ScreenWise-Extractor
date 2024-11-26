@@ -17,7 +17,6 @@ export default function GlobalHeader() {
   useEffect(() => {
     (async () => {
       const result = await Auth.currentAuthenticatedUser();    
-      // console.log(result);  
       if (!result || Object.keys(result).length === 0) {
         console.log("Signed out!")
         Auth.signOut();
@@ -56,8 +55,8 @@ export default function GlobalHeader() {
     >
       <TopNavigation
         identity={{
-          href: "/",
-          logo: { src: "/images/LHlogo.png", alt:  CHATBOT_NAME  + " Logo" },
+          href: "/welcome",
+          logo: { src: "/images/stateseal-color.png", alt:  CHATBOT_NAME  + " Logo" },
         }}
         utilities={[          
           {
