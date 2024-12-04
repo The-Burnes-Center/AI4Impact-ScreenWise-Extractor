@@ -135,33 +135,35 @@ export default function ChatInputPanel(props: ChatInputPanelProps) {
     if (!username) return;    
 
     let userMessage = "Extracting JSON from the knowledge documents provided...";
-    let messageTemporary = `You are tasked with generating a structured JSON for program eligibility that includes programs, criteria, and questions. Follow these updated guidelines:
-JSON Structure
-Programs Section:
-Include: id, name, estimated_savings (string with detailed description), application_link, and criteria_ids.
-Criteria Section:
-Include: id, type (number, boolean, option), category, description, and relevant fields like threshold_by_household_size (for income) or options (for categorical criteria).
-Questions Section:
-Include: question, type, input_type, criteria_impact (mapping to programs and criteria), and options (only for dropdown questions).
-Key Refinements
-Use strings for estimated_savings with descriptions (e.g., "Up to $150/month").
-Ensure clear, program-specific descriptions for all criteria.
-Exclude options for boolean questions unless clarifying labels are necessary.
-Verify threshold_by_household_size values align with legal guidelines.
-Ensure all criteria links in criteria_ids are logically complete for each program.
-Use consistent terminology and formatting across all sections.
-{
-  "programs": [...],
-  "criteria": [...],
-  "questions": [...]
-}
-Use the following guidelines when generating the JSON:
+    let messageTemporary = `
+    You are tasked with generating a structured JSON for program eligibility that includes programs, criteria, and questions. Follow these updated guidelines:
+    JSON Structure
+    Put <json></json> tags around the JSON data.
+    Programs Section:
+    Include: id, name, estimated_savings, application_link, and criteria_ids.
+    Criteria Section:
+    Include: id, type (number, boolean, option), category, description, and relevant fields like threshold_by_household_size (for income) or options (for categorical criteria).
+    Questions Section:
+    Include: question, type, input_type, criteria_impact (mapping to programs and criteria), and options (only for dropdown questions).
+    Key Refinements
+    Use strings for estimated_savings with descriptions (e.g., "Up to $150/month").
+    Ensure clear, program-specific descriptions for all criteria.
+    Exclude options for boolean questions unless clarifying labels are necessary.
+    Verify threshold_by_household_size values align with legal guidelines.
+    Ensure all criteria links in criteria_ids are logically complete for each program.
+    Use consistent terminology and formatting across all sections.
+    {
+      "programs": [...],
+      "criteria": [...],
+      "questions": [...]
+    }
+    Use the following guidelines when generating the JSON:
 
-Use the exact key names, nesting, and types as shown.
-Ensure logical linking between questions and the programs/criteria they impact.
-Include realistic examples for threshold_by_household_size, options, and descriptions for each criterion.
-Refer to the following document details and convert them into a JSON structure that adheres strictly to the format and specifications above. Generate the JSON accurately and comprehensively, using placeholder text only when explicitly specified.`;
-  
+    Use the exact key names, nesting, and types as shown.
+    Ensure logical linking between questions and the programs/criteria they impact.
+    Include realistic examples for threshold_by_household_size, options, and descriptions for each criterion.
+    Refer to the following document details and convert them into a JSON structure that adheres strictly to the format and specifications above. Generate the JSON accurately and comprehensively, using placeholder text only when explicitly specified.`;
+      
     setState({ value: "" });    
     const messageToSend = messageTemporary;
 
@@ -219,7 +221,7 @@ Refer to the following document details and convert them into a JSON structure t
           "data": {
             userMessage: messageToSend,
             chatHistory: assembleHistory(messageHistoryRef.current.slice(0, -2)),
-            systemPrompt: `You are a skilled assistant tasked with creating a JSON structure to represent program eligibility criteria, associated questions, and program details based on provided information.`,
+            systemPrompt: `You are a skilled assistant tasked with creating a JSON structure to represent program eligibility criteria in your knowledge base, associated questions, and program details based on provided information. You always put <json></json> tags around JSON data.`,
             projectId: 'rsrs111111',
             user_id: username,
             session_id: props.session.id,
@@ -310,6 +312,36 @@ Refer to the following document details and convert them into a JSON structure t
     [ReadyState.UNINSTANTIATED]: "Uninstantiated",
   }[readyState];
 
+  const handleDownloadJson = () => {
+    const aiMessages = props.messageHistory.filter(
+      (message) => message.type === ChatBotMessageType.AI
+    );
+
+    const jsonMessage = aiMessages.find((message) =>
+      message.content.includes("<json>") && message.content.includes("</json>")
+    );
+
+    if (!jsonMessage) {
+      addNotification("error", "JSON not found.");     
+      return;
+    }
+
+    const jsonData = jsonMessage.content.match(/<json>([\s\S]*?)<\/json>/)?.[1];
+
+    if (!jsonData) {
+      alert("Failed to extract JSON data.");
+      return;
+    }
+
+    const blob = new Blob([jsonData], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "data.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <SpaceBetween direction="horizontal" size="l">
       <Container>
@@ -317,7 +349,7 @@ Refer to the following document details and convert them into a JSON structure t
           <Button onClick={handleSendMessage}>Extract</Button>
         </div>
         <div className={styles.input_textarea_container}>
-          <Button onClick={handleSendMessage}>Download File</Button>
+          <Button onClick={handleDownloadJson}>Download File</Button>
         </div>
       </Container>
     </SpaceBetween>
