@@ -63,14 +63,16 @@ export default function Welcome() {
                 variant="h1"
                 description="Upload, Extract, Build"
               >
-                Welcome to the Eligibility Extractor!
+                Welcome to ScreenWise: The Eligiblity Extractor
               </Header>
               <p>
-              The Eligibility Extractor is a free-to-use tool that allows you to upload various data sources and extract eligibility criteria from them! In combination with
+              The Eligibility Extractor is Part 1 of the ScreenWise suit--a free-to-use tool that allows you to upload various data sources and extract eligibility criteria for programs! Pair it with Part 2 of ScreenWise,
                 <Link external href="https://github.com/The-Burnes-Center/Eligibility_Screener/tree/main">{" "}
-                our partner screener builder
+                our Eligibility Screener Builder
                 </Link>{" "}
-                you can build your own eligibility screener with just program information!
+                , to effortlessly create custom eligibility screeners using the extracted program information.
+
+                Together These tools empower you to build smarter, more efficient eligibility screeners. 
               </p>
               <p>
                 Get started by uploading your data sources with the "Get Started" button.
