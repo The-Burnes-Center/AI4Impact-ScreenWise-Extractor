@@ -56,7 +56,7 @@ export default function GlobalHeader() {
       <TopNavigation
         identity={{
           href: "/welcome",
-          logo: { src: "/images/stateseal-color.png", alt:  CHATBOT_NAME  + " Logo" },
+          logo: { src: "/images/screenwise_square.png", alt:  CHATBOT_NAME  + " Logo" },
         }}
         utilities={[          
           {
