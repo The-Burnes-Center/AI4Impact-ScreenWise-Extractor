@@ -33,7 +33,7 @@ export default function Welcome() {
           header={
             <Header
               variant="h1"
-              description="An open-source, free-to-use screener builder."
+              description="An open-source, free-to-use RAG tool"
               actions={
                 <RouterButton
                   iconAlign="right"
@@ -66,38 +66,14 @@ export default function Welcome() {
                 Welcome to the Eligibility Extractor!
               </Header>
               <p>
-                The web app is hosted on{" "}
-                <Link external href="https://aws.amazon.com/s3/">
-                  Amazon S3
+              The Eligibility Extractor is a free-to-use tool that allows you to upload various data sources and extract eligibility criteria from them! In combination with
+                <Link external href="https://github.com/The-Burnes-Center/Eligibility_Screener/tree/main">{" "}
+                our partner screener builder
                 </Link>{" "}
-                behind{" "}
-                <Link external href="https://aws.amazon.com/cloudfront/">
-                  Amazon CloudFront
-                </Link>{" "}
-                with{" "}
-                <Link external href="https://aws.amazon.com/cognito/">
-                  Cognito Authentication
-                </Link>{" "}
-                to help you interact and experiment with{" "}
-                <strong>multiple Models</strong>,{" "}
-                <strong>multiple RAG sources</strong>,{" "}
-                <strong>conversational history support</strong> and{" "}
-                <strong>documents upload</strong>.
+                you can build your own eligibility screener with just program information!
               </p>
               <p>
-                The interface layer between the UI and backend is build on top
-                of{" "}
-                <Link
-                  external
-                  href="https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html"
-                >
-                  Amazon API Gateway WebSocket APIs
-                </Link>
-                <br />
-                Build on top of{" "}
-                <Link external href="https://cloudscape.design/">
-                  AWS Cloudscape design system
-                </Link>
+                Get started by uploading your data sources with the "Get Started" button.
               </p>
             </Container>
           </SpaceBetween>
